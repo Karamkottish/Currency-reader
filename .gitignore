@@ -1,0 +1,9 @@
+﻿.venv/
+__pycache__/
+node_modules/
+.dart_tool/
+build/
+.env
+*.tflite
+*.litertlm
+*.gguf
