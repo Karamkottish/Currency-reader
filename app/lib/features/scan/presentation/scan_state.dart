@@ -9,8 +9,11 @@ class ScanIdle extends ScanState {
 }
 
 class ScanSearching extends ScanState {
-  const ScanSearching({this.hint});
+  const ScanSearching({this.hint, this.capturing = false});
   final String? hint;
+
+  /// A scan is in progress, so the shutter is unavailable.
+  final bool capturing;
 }
 
 class ScanLocked extends ScanState {

@@ -28,7 +28,7 @@ Early development. Nothing user-facing works yet.
 | Unit tests for the vote aggregator, serial validator and rank fusion | `server/`, `ml/` and `data/` (placeholders only) |
 | Logo and brand assets | |
 
-The app currently shows a home screen, a stub scan screen, a stub currency list, and a chat screen that streams a canned answer from a fake engine.
+The app opens straight on a camera-style scan screen with an animated scan frame (searching, then locked), a demo scan button and a result sheet, in light and dark mode following the phone's setting. The camera and the currency data are not connected yet, so the viewfinder is a stand-in and the result sheet shows clearly labelled sample data. There is also a stub currency list and a chat screen that streams a canned answer from a fake engine.
 
 ## How it will work
 
