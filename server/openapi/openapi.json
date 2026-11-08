@@ -1,0 +1,2212 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/health": {
+      "get": {
+        "description": "Liveness check. Answers 200 as long as the process is up, without touching any dependency, so it is safe to call every few seconds. Use it to decide whether to restart the server. To decide whether the server can take traffic, use `/health/ready`.\n\nNot versioned and not rate limited.",
+        "operationId": "getLiveness",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The server is running.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LivenessResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "**INTERNAL_ERROR**: Something went wrong on the server. It is not caused by your request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "INTERNAL_ERROR",
+                    "value": {
+                      "status": 500,
+                      "code": "INTERNAL_ERROR",
+                      "message": "Something went wrong on the server.",
+                      "hint": "Try again. If it keeps happening, report the requestId.",
+                      "retryable": true,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/health"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Is the server running?",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "description": "Readiness check. Verifies that everything the API depends on is reachable, today the currency catalogue. Answers 200 when all checks pass and 503 `SERVICE_UNAVAILABLE` otherwise, with the failing check named in `details`. A load balancer should stop sending traffic while this returns 503.\n\nNot versioned and not rate limited.",
+        "operationId": "getReadiness",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Every dependency is ready.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "**INTERNAL_ERROR**: Something went wrong on the server. It is not caused by your request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "INTERNAL_ERROR",
+                    "value": {
+                      "status": 500,
+                      "code": "INTERNAL_ERROR",
+                      "message": "Something went wrong on the server.",
+                      "hint": "Try again. If it keeps happening, report the requestId.",
+                      "retryable": true,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/health/ready"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "**SERVICE_UNAVAILABLE**: The server is running but a part it needs is not ready.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "SERVICE_UNAVAILABLE": {
+                    "summary": "SERVICE_UNAVAILABLE",
+                    "value": {
+                      "status": 503,
+                      "code": "SERVICE_UNAVAILABLE",
+                      "message": "The server is not ready.",
+                      "hint": "Try again in a few seconds.",
+                      "retryable": true,
+                      "details": [
+                        {
+                          "field": "catalog",
+                          "problems": [
+                            "The catalogue is empty."
+                          ]
+                        }
+                      ],
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/health/ready"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Can the server take requests?",
+        "tags": [
+          "Health"
+        ]
+      }
+    },
+    "/v1/manifest": {
+      "get": {
+        "description": "The app calls this on launch and then about once a day. It answers two questions:\n\n1. **Is there newer data?** Compare `dataPack.version` with the version the app already holds.\n2. **Is this app still supported?** Send `appVersion`; if it is older than `minAppVersion` the answer is 426.\n\nThe response may be cached for a minute (`Cache-Control: public, max-age=60`).",
+        "operationId": "getManifest",
+        "parameters": [
+          {
+            "name": "platform",
+            "required": false,
+            "in": "query",
+            "description": "Which app is asking. Reserved for platform-specific downloads later.",
+            "schema": {
+              "example": "android",
+              "type": "string",
+              "enum": [
+                "android",
+                "ios"
+              ]
+            }
+          },
+          {
+            "name": "appVersion",
+            "required": false,
+            "in": "query",
+            "description": "The app's own version as `major.minor.patch`. If it is older than `minAppVersion` the server answers 426 `APP_UPDATE_REQUIRED`.",
+            "schema": {
+              "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+              "example": "0.1.0",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The current manifest.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ManifestResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "**VALIDATION_FAILED**: One or more fields are missing, the wrong type, or out of range. `details` lists each one.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "VALIDATION_FAILED",
+                    "value": {
+                      "status": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Invalid lines: lines must contain at least 1 elements.",
+                      "hint": "Fix the fields listed in `details` and send the request again.",
+                      "retryable": false,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/manifest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "426": {
+            "description": "**APP_UPDATE_REQUIRED**: The app is older than the minimum version this server supports.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "APP_UPDATE_REQUIRED": {
+                    "summary": "APP_UPDATE_REQUIRED",
+                    "value": {
+                      "status": 426,
+                      "code": "APP_UPDATE_REQUIRED",
+                      "message": "App version 0.0.9 is older than the minimum 0.1.0.",
+                      "hint": "Ask the user to update the app.",
+                      "retryable": false,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/manifest"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "**RATE_LIMITED**: Too many requests from this address. See the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "RATE_LIMITED",
+                    "value": {
+                      "status": 429,
+                      "code": "RATE_LIMITED",
+                      "message": "Too many requests. Slow down.",
+                      "hint": "Wait the number of seconds in the Retry-After header, then try again.",
+                      "retryable": true,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "**INTERNAL_ERROR**: Something went wrong on the server. It is not caused by your request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "INTERNAL_ERROR",
+                    "value": {
+                      "status": 500,
+                      "code": "INTERNAL_ERROR",
+                      "message": "Something went wrong on the server.",
+                      "hint": "Try again. If it keeps happening, report the requestId.",
+                      "retryable": true,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "What is the newest data, and may this app version use it?",
+        "tags": [
+          "Manifest"
+        ]
+      }
+    },
+    "/v1/currencies": {
+      "get": {
+        "description": "Returns one page of currencies, sorted by catalogue order. Use `q` to search by code, name or country and `limit` / `offset` to page.\n\nTo fetch every currency, keep requesting with `offset=nextOffset` until `nextOffset` is `null`.",
+        "operationId": "listCurrencies",
+        "parameters": [
+          {
+            "name": "q",
+            "required": false,
+            "in": "query",
+            "description": "Only currencies whose code, name or country contains this text (case-insensitive).",
+            "schema": {
+              "maxLength": 50,
+              "example": "euro",
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "description": "Page size.",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "example": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "offset",
+            "required": false,
+            "in": "query",
+            "description": "How many currencies to skip.",
+            "schema": {
+              "minimum": 0,
+              "default": 0,
+              "example": 0,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "One page of currencies. An empty `items` array means nothing matched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrencyList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "**VALIDATION_FAILED**: One or more fields are missing, the wrong type, or out of range. `details` lists each one.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "VALIDATION_FAILED",
+                    "value": {
+                      "status": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Invalid limit: limit must not be greater than 100.",
+                      "hint": "Fix the fields listed in `details` and send the request again.",
+                      "retryable": false,
+                      "details": [
+                        {
+                          "field": "limit",
+                          "problems": [
+                            "limit must not be greater than 100"
+                          ]
+                        }
+                      ],
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies?limit=500"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "**RATE_LIMITED**: Too many requests from this address. See the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "RATE_LIMITED",
+                    "value": {
+                      "status": 429,
+                      "code": "RATE_LIMITED",
+                      "message": "Too many requests. Slow down.",
+                      "hint": "Wait the number of seconds in the Retry-After header, then try again.",
+                      "retryable": true,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "**INTERNAL_ERROR**: Something went wrong on the server. It is not caused by your request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "INTERNAL_ERROR",
+                    "value": {
+                      "status": 500,
+                      "code": "INTERNAL_ERROR",
+                      "message": "Something went wrong on the server.",
+                      "hint": "Try again. If it keeps happening, report the requestId.",
+                      "retryable": true,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the currencies in the catalogue",
+        "tags": [
+          "Currencies"
+        ]
+      }
+    },
+    "/v1/currencies/{isoCode}": {
+      "get": {
+        "description": "Returns the currency with every denomination it has. Use it to learn which values exist before asking for facts about one.",
+        "operationId": "getCurrency",
+        "parameters": [
+          {
+            "name": "isoCode",
+            "required": true,
+            "in": "path",
+            "description": "ISO 4217 currency code. Case-insensitive; the API upper-cases it.",
+            "schema": {
+              "pattern": "^[A-Za-z]{3}$",
+              "example": "EUR",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The currency.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrencyDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "**VALIDATION_FAILED**: One or more fields are missing, the wrong type, or out of range. `details` lists each one.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "VALIDATION_FAILED",
+                    "value": {
+                      "status": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Invalid isoCode: isoCode must be three letters, for example EUR.",
+                      "hint": "Fix the fields listed in `details` and send the request again.",
+                      "retryable": false,
+                      "details": [
+                        {
+                          "field": "isoCode",
+                          "problems": [
+                            "isoCode must be three letters, for example EUR"
+                          ]
+                        }
+                      ],
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies/EURO"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "**CURRENCY_NOT_FOUND**: No currency with that ISO 4217 code is in the catalogue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "CURRENCY_NOT_FOUND": {
+                    "summary": "CURRENCY_NOT_FOUND",
+                    "value": {
+                      "status": 404,
+                      "code": "CURRENCY_NOT_FOUND",
+                      "message": "No currency with the code 'XYZ'.",
+                      "hint": "List the supported codes with GET /v1/currencies. For a note the app has scanned, POST /v1/scan/resolve.",
+                      "retryable": false,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies/XYZ"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "**RATE_LIMITED**: Too many requests from this address. See the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "RATE_LIMITED",
+                    "value": {
+                      "status": 429,
+                      "code": "RATE_LIMITED",
+                      "message": "Too many requests. Slow down.",
+                      "hint": "Wait the number of seconds in the Retry-After header, then try again.",
+                      "retryable": true,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "**INTERNAL_ERROR**: Something went wrong on the server. It is not caused by your request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "INTERNAL_ERROR",
+                    "value": {
+                      "status": 500,
+                      "code": "INTERNAL_ERROR",
+                      "message": "Something went wrong on the server.",
+                      "hint": "Try again. If it keeps happening, report the requestId.",
+                      "retryable": true,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get one currency and its denominations",
+        "tags": [
+          "Currencies"
+        ]
+      }
+    },
+    "/v1/currencies/{isoCode}/facts": {
+      "get": {
+        "description": "Every fact carries the source it came from and a `verification` flag. Pass `denomination` to get the facts about one note plus the facts about the currency as a whole.\n\n**Checking for changes without downloading again.** The response has an `ETag` that changes whenever the facts do. Send it back in `If-None-Match`; if nothing changed the answer is `304 Not Modified` with no body. This is how the app keeps its saved copy current at almost no cost: show the saved facts at once, then make this conditional request in the background.\n\n`Cache-Control: no-cache` means a cache may store the response but must revalidate it every time.",
+        "operationId": "getCurrencyFacts",
+        "parameters": [
+          {
+            "name": "isoCode",
+            "required": true,
+            "in": "path",
+            "description": "ISO 4217 currency code. Case-insensitive; the API upper-cases it.",
+            "schema": {
+              "pattern": "^[A-Za-z]{3}$",
+              "example": "EUR",
+              "type": "string"
+            }
+          },
+          {
+            "name": "lang",
+            "required": false,
+            "in": "query",
+            "description": "Language of the facts. Only English exists today.",
+            "schema": {
+              "default": "en",
+              "type": "string",
+              "enum": [
+                "en"
+              ]
+            }
+          },
+          {
+            "name": "denomination",
+            "required": false,
+            "in": "query",
+            "description": "Return only facts about this denomination, plus facts about the currency as a whole. Must be a denomination the currency has.",
+            "schema": {
+              "minimum": 1,
+              "example": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "description": "The `ETag` of the copy you already hold, quotes included. Send `*` to match anything.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "example": "\"EUR-all-v1\""
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The facts, newest version.",
+            "headers": {
+              "ETag": {
+                "description": "Identifies this version of the facts. Send it back as `If-None-Match`.",
+                "schema": {
+                  "type": "string",
+                  "example": "\"EUR-all-v1\""
+                }
+              },
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "no-cache"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FactsResponse"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "The copy you hold is still current. There is no body: keep using what you have.",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string",
+                  "example": "\"EUR-all-v1\""
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "**VALIDATION_FAILED**: One or more fields are missing, the wrong type, or out of range. `details` lists each one.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "VALIDATION_FAILED",
+                    "value": {
+                      "status": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Invalid lang: lang must be en (no other language is available yet).",
+                      "hint": "Fix the fields listed in `details` and send the request again.",
+                      "retryable": false,
+                      "details": [
+                        {
+                          "field": "lang",
+                          "problems": [
+                            "lang must be en (no other language is available yet)"
+                          ]
+                        }
+                      ],
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies/EUR/facts?lang=fr"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "**CURRENCY_NOT_FOUND**: No currency with that ISO 4217 code is in the catalogue.\n\n**DENOMINATION_NOT_FOUND**: The currency exists but has no such denomination.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "CURRENCY_NOT_FOUND": {
+                    "summary": "CURRENCY_NOT_FOUND",
+                    "value": {
+                      "status": 404,
+                      "code": "CURRENCY_NOT_FOUND",
+                      "message": "No currency with the code 'XYZ'.",
+                      "hint": "List the supported codes with GET /v1/currencies. For a note the app has scanned, POST /v1/scan/resolve.",
+                      "retryable": false,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies/EUR/facts?denomination=25"
+                    }
+                  },
+                  "DENOMINATION_NOT_FOUND": {
+                    "summary": "DENOMINATION_NOT_FOUND",
+                    "value": {
+                      "status": 404,
+                      "code": "DENOMINATION_NOT_FOUND",
+                      "message": "EUR has no 25 denomination.",
+                      "hint": "Read the currency with GET /v1/currencies/{isoCode} to see its denominations.",
+                      "retryable": false,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies/EUR/facts?denomination=25"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "**RATE_LIMITED**: Too many requests from this address. See the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "RATE_LIMITED",
+                    "value": {
+                      "status": 429,
+                      "code": "RATE_LIMITED",
+                      "message": "Too many requests. Slow down.",
+                      "hint": "Wait the number of seconds in the Retry-After header, then try again.",
+                      "retryable": true,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "**INTERNAL_ERROR**: Something went wrong on the server. It is not caused by your request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "INTERNAL_ERROR",
+                    "value": {
+                      "status": 500,
+                      "code": "INTERNAL_ERROR",
+                      "message": "Something went wrong on the server.",
+                      "hint": "Try again. If it keeps happening, report the requestId.",
+                      "retryable": true,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Get the sourced facts about a currency",
+        "tags": [
+          "Currencies"
+        ]
+      }
+    },
+    "/v1/scan/resolve": {
+      "post": {
+        "description": "Send the text the phone read from a note and get back the currency it belongs to.\n\n**How it decides.** It looks for phrases printed on notes: the issuing bank (worth 0.5), the currency word (0.4), the country (0.3) and the ISO code (0.25). The distinct clues found are added up and capped at 1; each is listed in `evidence`. The answer is `matched` when the best candidate reaches 0.5 and leads the runner-up by at least 0.25.\n\n**Always 200 for a valid request.** `unknown` and `ambiguous` are normal answers, not errors. Only a malformed request fails.\n\n**Privacy.** The body is text only, at most 32 KB. Nothing is stored.",
+        "operationId": "resolveScan",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveScanRequest"
+              },
+              "examples": {
+                "clearMatch": {
+                  "summary": "A euro note",
+                  "value": {
+                    "lines": [
+                      "EUROPEAN CENTRAL BANK",
+                      "EURO",
+                      "20",
+                      "BCE ECB EZB"
+                    ]
+                  }
+                },
+                "oneClueOnly": {
+                  "summary": "Only a currency word was read",
+                  "value": {
+                    "lines": [
+                      "TWENTY DOLLARS"
+                    ]
+                  }
+                },
+                "notInCatalogue": {
+                  "summary": "A note from a currency the catalogue does not have",
+                  "value": {
+                    "lines": [
+                      "BANCO CENTRAL",
+                      "CIEN PESOS"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A decision. Check `status`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolveScanResponse"
+                },
+                "examples": {
+                  "matched": {
+                    "summary": "matched: one clear answer",
+                    "value": {
+                      "status": "matched",
+                      "matches": [
+                        {
+                          "isoCode": "EUR",
+                          "name": "Euro",
+                          "confidence": 0.9,
+                          "denomination": {
+                            "value": 20,
+                            "kind": "note"
+                          },
+                          "evidence": [
+                            "Issuer \"EUROPEAN CENTRAL BANK\"",
+                            "Currency word \"EURO\"",
+                            "Issuer \"BCE\"",
+                            "Issuer \"ECB\"",
+                            "Issuer \"EZB\"",
+                            "Denomination 20"
+                          ]
+                        }
+                      ],
+                      "nextStep": "Show the facts with GET /v1/currencies/EUR/facts."
+                    }
+                  },
+                  "ambiguous": {
+                    "summary": "ambiguous: a clue, but not enough",
+                    "value": {
+                      "status": "ambiguous",
+                      "matches": [
+                        {
+                          "isoCode": "USD",
+                          "name": "United States dollar",
+                          "confidence": 0.4,
+                          "denomination": {
+                            "value": 20,
+                            "kind": "note"
+                          },
+                          "evidence": [
+                            "Currency word \"DOLLARS\"",
+                            "Denomination 20"
+                          ]
+                        }
+                      ],
+                      "nextStep": "Ask the user to confirm one of the candidates, or scan again with the note flat and well lit."
+                    }
+                  },
+                  "unknown": {
+                    "summary": "unknown: nothing fits",
+                    "value": {
+                      "status": "unknown",
+                      "matches": [],
+                      "nextStep": "This currency is not in the catalogue. Ask the user to scan again; looking up new currencies is not available yet."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "**VALIDATION_FAILED**: One or more fields are missing, the wrong type, or out of range. `details` lists each one.\n\n**INVALID_JSON**: The request body is empty or is not valid JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "VALIDATION_FAILED",
+                    "value": {
+                      "status": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Invalid lines: lines must contain at least 1 elements.",
+                      "hint": "Fix the fields listed in `details` and send the request again.",
+                      "retryable": false,
+                      "details": [
+                        {
+                          "field": "lines",
+                          "problems": [
+                            "lines must contain at least 1 elements"
+                          ]
+                        }
+                      ],
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/scan/resolve"
+                    }
+                  },
+                  "INVALID_JSON": {
+                    "summary": "INVALID_JSON",
+                    "value": {
+                      "status": 400,
+                      "code": "INVALID_JSON",
+                      "message": "The request body is not valid JSON.",
+                      "hint": "Send a JSON object with the header Content-Type: application/json.",
+                      "retryable": false,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/scan/resolve"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "**PAYLOAD_TOO_LARGE**: The request body is larger than 32 KB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "PAYLOAD_TOO_LARGE": {
+                    "summary": "PAYLOAD_TOO_LARGE",
+                    "value": {
+                      "status": 413,
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "message": "The request body is larger than 32 KB.",
+                      "hint": "Send less data. Text only; never send images to this API.",
+                      "retryable": false,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/scan/resolve"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "**UNSUPPORTED_MEDIA_TYPE**: The Content-Type is not application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "UNSUPPORTED_MEDIA_TYPE": {
+                    "summary": "UNSUPPORTED_MEDIA_TYPE",
+                    "value": {
+                      "status": 415,
+                      "code": "UNSUPPORTED_MEDIA_TYPE",
+                      "message": "Content-Type must be application/json.",
+                      "hint": "Send the body as JSON with the header Content-Type: application/json.",
+                      "retryable": false,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/scan/resolve"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "**RATE_LIMITED**: Too many requests from this address. See the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "RATE_LIMITED",
+                    "value": {
+                      "status": 429,
+                      "code": "RATE_LIMITED",
+                      "message": "Too many requests. Slow down.",
+                      "hint": "Wait the number of seconds in the Retry-After header, then try again.",
+                      "retryable": true,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "**INTERNAL_ERROR**: Something went wrong on the server. It is not caused by your request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "INTERNAL_ERROR",
+                    "value": {
+                      "status": 500,
+                      "code": "INTERNAL_ERROR",
+                      "message": "Something went wrong on the server.",
+                      "hint": "Try again. If it keeps happening, report the requestId.",
+                      "retryable": true,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Which currency is this note?",
+        "tags": [
+          "Scan"
+        ]
+      }
+    },
+    "/v1/ask": {
+      "post": {
+        "description": "Answers a question using only the facts in the catalogue, and streams the answer word by word as **server-sent events**, so the app can show it as it is written.\n\n### The stream\nThe response is `text/event-stream`. Each message is `event: <name>` then `data: <json>`, ended by a blank line. Events arrive in this order:\n\n| Event | Data | When |\n|---|---|---|\n| `sources` | `{ sources: [{ n, id, text, sourceName, sourceUrl }] }` | First, once. The facts the answer is built from; `[n]` in the answer refers to `n`. Empty when nothing matched. |\n| `token` | `{ text }` | Many times. Append `text` to the answer. |\n| `done` | `{ finishReason, answered }` | Last, once. `answered` is false when the facts did not cover the question. |\n| `error` | the standard error body | Instead of `done`, if something fails after the stream has started. |\n\n### Errors\n- **Before the stream starts** (bad request, unknown currency, rate limit) you get an ordinary JSON error with the matching HTTP status.\n- **After it starts** the status is already 200, so a failure arrives as an `error` event and the stream ends.\n- **Closing the connection** cancels the answer immediately.\n\n### What answers it\nNo language model is connected yet. The answer is made by quoting the best matching facts with their `[n]` numbers, so it can never say anything that is not in the catalogue. If no fact matches, the answer is \"I don't have that information yet.\" and `answered` is false. A model will replace this without changing the stream.\n\n**Rate limit:** 10 requests per minute per address, on top of the general limit.",
+        "operationId": "askQuestion",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A stream of events. See the table above.",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                },
+                "example": "event: sources\ndata: {\"sources\":[{\"n\":1,\"id\":\"eur-020-001\",\"text\":\"The 20 euro note is blue.\",\"sourceName\":\"European Central Bank\",\"sourceUrl\":\"https://www.ecb.europa.eu/\"}]}\n\nevent: token\ndata: {\"text\":\"The \"}\n\nevent: token\ndata: {\"text\":\"20 \"}\n\nevent: token\ndata: {\"text\":\"euro \"}\n\nevent: token\ndata: {\"text\":\"note \"}\n\nevent: token\ndata: {\"text\":\"is \"}\n\nevent: token\ndata: {\"text\":\"blue. \"}\n\nevent: token\ndata: {\"text\":\"[1] \"}\n\nevent: done\ndata: {\"finishReason\":\"stop\",\"answered\":true}\n"
+              }
+            }
+          },
+          "400": {
+            "description": "**VALIDATION_FAILED**: One or more fields are missing, the wrong type, or out of range. `details` lists each one.\n\n**INVALID_JSON**: The request body is empty or is not valid JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "VALIDATION_FAILED",
+                    "value": {
+                      "status": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Invalid question: question must be longer than or equal to 3 characters.",
+                      "hint": "Fix the fields listed in `details` and send the request again.",
+                      "retryable": false,
+                      "details": [
+                        {
+                          "field": "question",
+                          "problems": [
+                            "question must be longer than or equal to 3 characters"
+                          ]
+                        }
+                      ],
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/ask"
+                    }
+                  },
+                  "INVALID_JSON": {
+                    "summary": "INVALID_JSON",
+                    "value": {
+                      "status": 400,
+                      "code": "INVALID_JSON",
+                      "message": "The request body is not valid JSON.",
+                      "hint": "Send a JSON object with the header Content-Type: application/json.",
+                      "retryable": false,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/ask"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "**CURRENCY_NOT_FOUND**: No currency with that ISO 4217 code is in the catalogue.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "CURRENCY_NOT_FOUND": {
+                    "summary": "CURRENCY_NOT_FOUND",
+                    "value": {
+                      "status": 404,
+                      "code": "CURRENCY_NOT_FOUND",
+                      "message": "No currency with the code 'XYZ'.",
+                      "hint": "List the supported codes with GET /v1/currencies. For a note the app has scanned, POST /v1/scan/resolve.",
+                      "retryable": false,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/ask"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "**PAYLOAD_TOO_LARGE**: The request body is larger than 32 KB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "PAYLOAD_TOO_LARGE": {
+                    "summary": "PAYLOAD_TOO_LARGE",
+                    "value": {
+                      "status": 413,
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "message": "The request body is larger than 32 KB.",
+                      "hint": "Send less data. Text only; never send images to this API.",
+                      "retryable": false,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/ask"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "**UNSUPPORTED_MEDIA_TYPE**: The Content-Type is not application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "UNSUPPORTED_MEDIA_TYPE": {
+                    "summary": "UNSUPPORTED_MEDIA_TYPE",
+                    "value": {
+                      "status": 415,
+                      "code": "UNSUPPORTED_MEDIA_TYPE",
+                      "message": "Content-Type must be application/json.",
+                      "hint": "Send the body as JSON with the header Content-Type: application/json.",
+                      "retryable": false,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/ask"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "**RATE_LIMITED**: Too many requests from this address. See the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "RATE_LIMITED",
+                    "value": {
+                      "status": 429,
+                      "code": "RATE_LIMITED",
+                      "message": "Too many requests. Slow down.",
+                      "hint": "Wait the number of seconds in the Retry-After header, then try again.",
+                      "retryable": true,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "**INTERNAL_ERROR**: Something went wrong on the server. It is not caused by your request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "INTERNAL_ERROR",
+                    "value": {
+                      "status": 500,
+                      "code": "INTERNAL_ERROR",
+                      "message": "Something went wrong on the server.",
+                      "hint": "Try again. If it keeps happening, report the requestId.",
+                      "retryable": true,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Ask a question about a currency (streamed)",
+        "tags": [
+          "Ask"
+        ]
+      }
+    },
+    "/v1/feedback": {
+      "post": {
+        "description": "Lets the app tell us when it got something wrong, so the catalogue and the matching can be improved. Send what was read (`ocrLines`) and what the app showed (`isoCode`), never a photo.\n\n**Storage.** Reports are kept in server memory, newest 1,000 only, and are lost on restart. A database replaces this in a later version.",
+        "operationId": "sendFeedback",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FeedbackRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The report was received.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedbackReceipt"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "**VALIDATION_FAILED**: One or more fields are missing, the wrong type, or out of range. `details` lists each one.\n\n**INVALID_JSON**: The request body is empty or is not valid JSON.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "VALIDATION_FAILED": {
+                    "summary": "VALIDATION_FAILED",
+                    "value": {
+                      "status": 400,
+                      "code": "VALIDATION_FAILED",
+                      "message": "Invalid message: message must be longer than or equal to 3 characters.",
+                      "hint": "Fix the fields listed in `details` and send the request again.",
+                      "retryable": false,
+                      "details": [
+                        {
+                          "field": "message",
+                          "problems": [
+                            "message must be longer than or equal to 3 characters"
+                          ]
+                        }
+                      ],
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/feedback"
+                    }
+                  },
+                  "INVALID_JSON": {
+                    "summary": "INVALID_JSON",
+                    "value": {
+                      "status": 400,
+                      "code": "INVALID_JSON",
+                      "message": "The request body is not valid JSON.",
+                      "hint": "Send a JSON object with the header Content-Type: application/json.",
+                      "retryable": false,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/feedback"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "**PAYLOAD_TOO_LARGE**: The request body is larger than 32 KB.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "PAYLOAD_TOO_LARGE": {
+                    "summary": "PAYLOAD_TOO_LARGE",
+                    "value": {
+                      "status": 413,
+                      "code": "PAYLOAD_TOO_LARGE",
+                      "message": "The request body is larger than 32 KB.",
+                      "hint": "Send less data. Text only; never send images to this API.",
+                      "retryable": false,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/feedback"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "**UNSUPPORTED_MEDIA_TYPE**: The Content-Type is not application/json.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "UNSUPPORTED_MEDIA_TYPE": {
+                    "summary": "UNSUPPORTED_MEDIA_TYPE",
+                    "value": {
+                      "status": 415,
+                      "code": "UNSUPPORTED_MEDIA_TYPE",
+                      "message": "Content-Type must be application/json.",
+                      "hint": "Send the body as JSON with the header Content-Type: application/json.",
+                      "retryable": false,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/feedback"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "**RATE_LIMITED**: Too many requests from this address. See the Retry-After header.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "RATE_LIMITED": {
+                    "summary": "RATE_LIMITED",
+                    "value": {
+                      "status": 429,
+                      "code": "RATE_LIMITED",
+                      "message": "Too many requests. Slow down.",
+                      "hint": "Wait the number of seconds in the Retry-After header, then try again.",
+                      "retryable": true,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "**INTERNAL_ERROR**: Something went wrong on the server. It is not caused by your request.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                },
+                "examples": {
+                  "INTERNAL_ERROR": {
+                    "summary": "INTERNAL_ERROR",
+                    "value": {
+                      "status": 500,
+                      "code": "INTERNAL_ERROR",
+                      "message": "Something went wrong on the server.",
+                      "hint": "Try again. If it keeps happening, report the requestId.",
+                      "retryable": true,
+                      "requestId": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11",
+                      "timestamp": "2026-11-08T10:15:30.000Z",
+                      "path": "/v1/currencies"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Report a wrong or missing result",
+        "tags": [
+          "Feedback"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "Currency Reader API",
+    "description": "The HTTP API behind the **Currency Reader** app. The phone reads a banknote with its camera and OCR, then uses this API to find out which currency it is, fetch sourced facts about it, and answer questions.\n\n## Try it\nUse **Try it out** on any endpoint below. For a first look:\n\n1. `GET /v1/currencies`: see what the catalogue holds.\n2. `POST /v1/scan/resolve` with the example body: it names a currency from OCR text.\n3. `GET /v1/currencies/EUR/facts`: read the facts; copy the `ETag` and send it back as `If-None-Match` to see `304`.\n4. `POST /v1/ask`: stream an answer. (The docs page can show only the final text; `curl -N` shows it arriving.)\n\n```bash\ncurl -s localhost:3000/v1/scan/resolve -H 'content-type: application/json' \\\n  -d '{\"lines\":[\"EUROPEAN CENTRAL BANK\",\"EURO\",\"20\"]}'\n\ncurl -N localhost:3000/v1/ask -H 'content-type: application/json' \\\n  -d '{\"question\":\"What colour is the 20 euro note?\",\"isoCode\":\"EUR\"}'\n```\n\n## What is real today\n| Part | State |\n|---|---|\n| Endpoints, validation, errors, rate limits | Working and tested. |\n| Catalogue | A small hand-written starter set (4 currencies). Every fact is marked `unverified`. Held in memory; a database replaces it later. |\n| Answers (`/v1/ask`) | Quote the best matching facts. **No language model is connected yet.** |\n| Looking up currencies that are not in the catalogue | Not built. `/v1/scan/resolve` answers `unknown`. |\n| Exchange rates | Not built. |\n| Feedback storage | In memory only; lost on restart. |\n\n## Conventions\n\n**Versioning.** Endpoints live under `/v1`. A breaking change gets `/v2`; `/v1` keeps working. Health checks are not versioned.\n\n**Content type.** Requests with a body must send `Content-Type: application/json`. Bodies are limited to 32 KB. The API never accepts images.\n\n**Unknown fields are rejected.** A misspelled field returns `VALIDATION_FAILED` instead of being ignored, so mistakes show up while developing.\n\n**Request ID.** Every response has an `x-request-id` header, and every error body repeats it as `requestId`. You may send your own `x-request-id` (letters, digits, `-` and `_`, up to 64 characters); otherwise one is generated. Quote it when reporting a problem.\n\n**Rate limits.** 60 requests per minute per client address, and 10 per minute on `/v1/ask`. Over the limit, the answer is `429 RATE_LIMITED` with a `Retry-After` header in seconds. The health checks are exempt.\n\n**Caching.** Facts carry an `ETag`. Send it back in `If-None-Match` to get `304 Not Modified` when nothing has changed.\n\n## Errors\nEvery failure, from any endpoint, has the same JSON body:\n\n```json\n{\n  \"status\": 404,\n  \"code\": \"CURRENCY_NOT_FOUND\",\n  \"message\": \"No currency with the code 'XYZ'.\",\n  \"hint\": \"List the supported codes with GET /v1/currencies.\",\n  \"retryable\": false,\n  \"requestId\": \"8f14e45f-ceea-467a-9575-1c9d0b1f0a11\",\n  \"timestamp\": \"2026-11-08T10:15:30.000Z\",\n  \"path\": \"/v1/currencies/XYZ\"\n}\n```\n\n- **Branch on `code`**, never on `message`: the code is stable, the wording may change.\n- `retryable` says whether the same request may succeed later. If false, change the request.\n- `details` appears for `VALIDATION_FAILED` and lists each bad field.\n- Server faults (`INTERNAL_ERROR`) never include internal detail; use `requestId` to find them in the log.\n\n| Code | HTTP | Retry? | Meaning |\n|---|---|---|---|\n| `VALIDATION_FAILED` | 400 | no | One or more fields are missing, the wrong type, or out of range. `details` lists each one. |\n| `INVALID_JSON` | 400 | no | The request body is empty or is not valid JSON. |\n| `BAD_REQUEST` | 400 | no | The request was rejected for a reason that has no more specific code. |\n| `UNSUPPORTED_MEDIA_TYPE` | 415 | no | The Content-Type is not application/json. |\n| `PAYLOAD_TOO_LARGE` | 413 | no | The request body is larger than 32 KB. |\n| `ROUTE_NOT_FOUND` | 404 | no | There is no endpoint at that path or method. |\n| `CURRENCY_NOT_FOUND` | 404 | no | No currency with that ISO 4217 code is in the catalogue. |\n| `DENOMINATION_NOT_FOUND` | 404 | no | The currency exists but has no such denomination. |\n| `APP_UPDATE_REQUIRED` | 426 | no | The app is older than the minimum version this server supports. |\n| `RATE_LIMITED` | 429 | yes | Too many requests from this address. See the Retry-After header. |\n| `SERVICE_UNAVAILABLE` | 503 | yes | The server is running but a part it needs is not ready. |\n| `INTERNAL_ERROR` | 500 | yes | Something went wrong on the server. It is not caused by your request. |",
+    "version": "0.1.0",
+    "contact": {}
+  },
+  "tags": [
+    {
+      "name": "Health",
+      "description": "Is the server up, and is it ready for traffic? Used by monitors and load balancers."
+    },
+    {
+      "name": "Manifest",
+      "description": "What data version is current, and is this app version still supported?"
+    },
+    {
+      "name": "Currencies",
+      "description": "The catalogue: currencies, their denominations and sourced facts."
+    },
+    {
+      "name": "Scan",
+      "description": "Turn the text the phone read from a note into a currency."
+    },
+    {
+      "name": "Ask",
+      "description": "Ask a question and get a streamed answer built from sourced facts."
+    },
+    {
+      "name": "Feedback",
+      "description": "Tell us when the app was wrong, so the catalogue can improve."
+    }
+  ],
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "ErrorCode": {
+        "type": "string",
+        "enum": [
+          "VALIDATION_FAILED",
+          "INVALID_JSON",
+          "BAD_REQUEST",
+          "UNSUPPORTED_MEDIA_TYPE",
+          "PAYLOAD_TOO_LARGE",
+          "ROUTE_NOT_FOUND",
+          "CURRENCY_NOT_FOUND",
+          "DENOMINATION_NOT_FOUND",
+          "APP_UPDATE_REQUIRED",
+          "RATE_LIMITED",
+          "SERVICE_UNAVAILABLE",
+          "INTERNAL_ERROR"
+        ],
+        "description": "Stable, machine-readable code. Branch on this, never on `message`. See the error code table at the top of this page."
+      },
+      "ApiErrorDetail": {
+        "type": "object",
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "The request field the problem is about, e.g. `lines` or `lines.3`.",
+            "example": "lines"
+          },
+          "problems": {
+            "description": "What is wrong with that field, in plain English.",
+            "example": [
+              "lines must contain at least 1 elements"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "field",
+          "problems"
+        ]
+      },
+      "ApiError": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "number",
+            "description": "The HTTP status, repeated here so it survives logging and proxies.",
+            "example": 404
+          },
+          "code": {
+            "description": "Stable, machine-readable code. Branch on this, never on `message`. See the error code table at the top of this page.",
+            "example": "CURRENCY_NOT_FOUND",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ErrorCode"
+              }
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "What went wrong, written for a developer. May change between versions.",
+            "example": "No currency with the code 'XYZ'."
+          },
+          "hint": {
+            "type": "string",
+            "description": "What to do next.",
+            "example": "List the supported codes with GET /v1/currencies."
+          },
+          "retryable": {
+            "type": "boolean",
+            "description": "True if sending the same request again later may succeed. False means the request itself has to change.",
+            "example": false
+          },
+          "details": {
+            "description": "Per-field problems. Present for VALIDATION_FAILED.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiErrorDetail"
+            }
+          },
+          "requestId": {
+            "type": "string",
+            "description": "Identifies this request in the server log. Also sent as the `x-request-id` response header. Quote it when reporting a problem.",
+            "example": "8f14e45f-ceea-467a-9575-1c9d0b1f0a11"
+          },
+          "timestamp": {
+            "type": "string",
+            "description": "When the error was produced, UTC.",
+            "format": "date-time",
+            "example": "2026-11-08T10:15:30.000Z"
+          },
+          "path": {
+            "type": "string",
+            "description": "The path that was requested, without the query string.",
+            "example": "/v1/currencies/XYZ"
+          }
+        },
+        "required": [
+          "status",
+          "code",
+          "message",
+          "retryable",
+          "requestId",
+          "timestamp",
+          "path"
+        ]
+      },
+      "LivenessResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Always \"ok\" while the process is running.",
+            "enum": [
+              "ok"
+            ],
+            "example": "ok"
+          },
+          "version": {
+            "type": "string",
+            "description": "Server software version.",
+            "example": "0.1.0"
+          },
+          "uptimeSeconds": {
+            "type": "number",
+            "description": "Seconds since the server started.",
+            "example": 3612
+          },
+          "time": {
+            "type": "string",
+            "description": "Server clock, UTC.",
+            "format": "date-time",
+            "example": "2026-11-08T10:15:30.000Z"
+          }
+        },
+        "required": [
+          "status",
+          "version",
+          "uptimeSeconds",
+          "time"
+        ]
+      },
+      "ReadinessCheck": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Which dependency was checked.",
+            "example": "catalog"
+          },
+          "status": {
+            "type": "string",
+            "description": "Result of the check. A failing check turns the whole answer into a 503 instead.",
+            "enum": [
+              "up"
+            ],
+            "example": "up"
+          }
+        },
+        "required": [
+          "name",
+          "status"
+        ]
+      },
+      "ReadinessResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "Always \"ready\" in a 200 answer.",
+            "enum": [
+              "ready"
+            ],
+            "example": "ready"
+          },
+          "checks": {
+            "description": "One entry per dependency that was checked.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ReadinessCheck"
+            }
+          }
+        },
+        "required": [
+          "status",
+          "checks"
+        ]
+      },
+      "DataPackInfo": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "string",
+            "description": "Version of the whole data set. Changes whenever any currency or fact changes.",
+            "example": "2026.11.08-1"
+          },
+          "publishedAt": {
+            "type": "string",
+            "description": "When this version of the data was published, UTC.",
+            "format": "date-time",
+            "example": "2026-11-08T00:00:00.000Z"
+          },
+          "currencies": {
+            "type": "number",
+            "description": "Number of currencies in the data set.",
+            "example": 4
+          }
+        },
+        "required": [
+          "version",
+          "publishedAt",
+          "currencies"
+        ]
+      },
+      "ManifestResponse": {
+        "type": "object",
+        "properties": {
+          "dataPack": {
+            "$ref": "#/components/schemas/DataPackInfo"
+          },
+          "minAppVersion": {
+            "type": "string",
+            "description": "Oldest app version this server supports.",
+            "example": "0.1.0"
+          },
+          "models": {
+            "description": "Downloadable on-device models. Empty for now: no model is published yet.",
+            "example": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "serverTime": {
+            "type": "string",
+            "description": "Server clock, UTC.",
+            "format": "date-time",
+            "example": "2026-11-08T10:15:30.000Z"
+          }
+        },
+        "required": [
+          "dataPack",
+          "minAppVersion",
+          "models",
+          "serverTime"
+        ]
+      },
+      "CurrencySummary": {
+        "type": "object",
+        "properties": {
+          "isoCode": {
+            "type": "string",
+            "description": "ISO 4217 currency code.",
+            "example": "EUR"
+          },
+          "name": {
+            "type": "string",
+            "description": "English name of the currency.",
+            "example": "Euro"
+          },
+          "country": {
+            "type": "string",
+            "description": "Country or area that uses it.",
+            "example": "Euro area"
+          },
+          "symbol": {
+            "type": "string",
+            "description": "The symbol printed on notes and in prices.",
+            "example": "€"
+          },
+          "denominationCount": {
+            "type": "number",
+            "description": "How many denominations the currency has.",
+            "example": 7
+          },
+          "factsVersion": {
+            "type": "number",
+            "description": "Changes whenever any fact of this currency changes. Compare it with the stored copy to know whether to refresh.",
+            "example": 1
+          }
+        },
+        "required": [
+          "isoCode",
+          "name",
+          "country",
+          "symbol",
+          "denominationCount",
+          "factsVersion"
+        ]
+      },
+      "CurrencyList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CurrencySummary"
+            }
+          },
+          "total": {
+            "type": "number",
+            "description": "How many currencies match, across all pages.",
+            "example": 4
+          },
+          "limit": {
+            "type": "number",
+            "description": "The page size that was used.",
+            "example": 20
+          },
+          "offset": {
+            "type": "number",
+            "description": "The offset that was used.",
+            "example": 0
+          },
+          "nextOffset": {
+            "type": "number",
+            "description": "Offset of the next page, or null on the last page.",
+            "nullable": true,
+            "example": null
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "limit",
+          "offset",
+          "nextOffset"
+        ]
+      },
+      "DenominationInfo": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "number",
+            "description": "Face value.",
+            "example": 20
+          },
+          "kind": {
+            "type": "string",
+            "description": "Whether it is a banknote or a coin.",
+            "enum": [
+              "note",
+              "coin"
+            ],
+            "example": "note"
+          }
+        },
+        "required": [
+          "value",
+          "kind"
+        ]
+      },
+      "CurrencyDetail": {
+        "type": "object",
+        "properties": {
+          "isoCode": {
+            "type": "string",
+            "description": "ISO 4217 currency code.",
+            "example": "EUR"
+          },
+          "name": {
+            "type": "string",
+            "description": "English name of the currency.",
+            "example": "Euro"
+          },
+          "country": {
+            "type": "string",
+            "description": "Country or area that uses it.",
+            "example": "Euro area"
+          },
+          "symbol": {
+            "type": "string",
+            "description": "The symbol printed on notes and in prices.",
+            "example": "€"
+          },
+          "denominationCount": {
+            "type": "number",
+            "description": "How many denominations the currency has.",
+            "example": 7
+          },
+          "factsVersion": {
+            "type": "number",
+            "description": "Changes whenever any fact of this currency changes. Compare it with the stored copy to know whether to refresh.",
+            "example": 1
+          },
+          "issuer": {
+            "type": "string",
+            "description": "Who issues the currency.",
+            "example": "European Central Bank"
+          },
+          "denominations": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DenominationInfo"
+            }
+          }
+        },
+        "required": [
+          "isoCode",
+          "name",
+          "country",
+          "symbol",
+          "denominationCount",
+          "factsVersion",
+          "issuer",
+          "denominations"
+        ]
+      },
+      "FactSourceInfo": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Who published the information.",
+            "example": "European Central Bank"
+          },
+          "url": {
+            "type": "string",
+            "description": "Where it was published.",
+            "format": "uri",
+            "example": "https://www.ecb.europa.eu/"
+          }
+        },
+        "required": [
+          "name",
+          "url"
+        ]
+      },
+      "FactInfo": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Stable identifier. Safe to store.",
+            "example": "eur-020-001"
+          },
+          "text": {
+            "type": "string",
+            "description": "The fact, written as one self-contained sentence.",
+            "example": "The 20 euro note is blue."
+          },
+          "denomination": {
+            "type": "number",
+            "description": "Set when the fact is about one denomination only.",
+            "example": 20
+          },
+          "source": {
+            "$ref": "#/components/schemas/FactSourceInfo"
+          },
+          "verification": {
+            "type": "string",
+            "description": "`unverified`: written by hand from public sources and not yet confirmed by the update pipeline. Show it as such.",
+            "enum": [
+              "unverified",
+              "verified"
+            ],
+            "example": "unverified"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "source",
+          "verification"
+        ]
+      },
+      "FactsResponse": {
+        "type": "object",
+        "properties": {
+          "isoCode": {
+            "type": "string",
+            "description": "The currency the facts are about.",
+            "example": "EUR"
+          },
+          "lang": {
+            "type": "string",
+            "description": "Language the facts are written in.",
+            "example": "en"
+          },
+          "version": {
+            "type": "number",
+            "description": "Same value as `factsVersion` on the currency.",
+            "example": 1
+          },
+          "facts": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FactInfo"
+            }
+          }
+        },
+        "required": [
+          "isoCode",
+          "lang",
+          "version",
+          "facts"
+        ]
+      },
+      "ScanStatus": {
+        "type": "string",
+        "enum": [
+          "matched",
+          "ambiguous",
+          "unknown"
+        ],
+        "description": "`matched`: one clear answer, safe to show. `ambiguous`: there are candidates but none is clear, so ask the user or scan again. `unknown`: nothing in the catalogue fits."
+      },
+      "DenominationMatch": {
+        "type": "object",
+        "properties": {
+          "value": {
+            "type": "number",
+            "description": "Face value that was found printed in the text.",
+            "example": 20
+          },
+          "kind": {
+            "type": "string",
+            "description": "Whether it is a banknote or a coin.",
+            "enum": [
+              "note",
+              "coin"
+            ],
+            "example": "note"
+          }
+        },
+        "required": [
+          "value",
+          "kind"
+        ]
+      },
+      "ScanMatch": {
+        "type": "object",
+        "properties": {
+          "isoCode": {
+            "type": "string",
+            "description": "ISO 4217 code of the candidate currency.",
+            "example": "EUR"
+          },
+          "name": {
+            "type": "string",
+            "description": "English name of the currency.",
+            "example": "Euro"
+          },
+          "confidence": {
+            "type": "number",
+            "description": "How sure the match is, 0 to 1. It is the sum of the weights of the distinct clues found, capped at 1: issuer name 0.5, currency word 0.4, country 0.3, ISO code 0.25.",
+            "minimum": 0,
+            "maximum": 1,
+            "example": 0.9
+          },
+          "denomination": {
+            "description": "The denomination, when exactly one denomination of this currency is printed in the text. Absent when none or several are.",
+            "example": {
+              "value": 20,
+              "kind": "note"
+            },
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/DenominationMatch"
+              }
+            ]
+          },
+          "evidence": {
+            "description": "The clues behind the match, so the app can show why.",
+            "example": [
+              "Issuer \"EUROPEAN CENTRAL BANK\"",
+              "Currency word \"EURO\""
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "isoCode",
+          "name",
+          "confidence",
+          "evidence"
+        ]
+      },
+      "ResolveScanResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "description": "`matched`: one clear answer, safe to show. `ambiguous`: there are candidates but none is clear, so ask the user or scan again. `unknown`: nothing in the catalogue fits.",
+            "example": "matched",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ScanStatus"
+              }
+            ]
+          },
+          "matches": {
+            "description": "Up to three candidates, best first. Empty when `status` is `unknown`.",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ScanMatch"
+            }
+          },
+          "nextStep": {
+            "type": "string",
+            "description": "What the app should do now, in words.",
+            "example": "Show the facts with GET /v1/currencies/EUR/facts."
+          }
+        },
+        "required": [
+          "status",
+          "matches",
+          "nextStep"
+        ]
+      },
+      "ResolveScanRequest": {
+        "type": "object",
+        "properties": {
+          "lines": {
+            "description": "The text lines the phone read from one scan, in reading order. Up to 60 lines of 200 characters. Send text only; the API never accepts images.",
+            "minItems": 1,
+            "maxItems": 60,
+            "example": [
+              "EUROPEAN CENTRAL BANK",
+              "EURO",
+              "20",
+              "BCE ECB EZB"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "lines"
+        ]
+      },
+      "AskRequest": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "description": "The question, in English. 3 to 500 characters.",
+            "minLength": 3,
+            "maxLength": 500,
+            "example": "What colour is the 20 euro note?"
+          },
+          "isoCode": {
+            "type": "string",
+            "description": "Limit the answer to one currency, usually the one just scanned. Without it, every currency is searched.",
+            "example": "EUR",
+            "pattern": "^[A-Za-z]{3}$"
+          }
+        },
+        "required": [
+          "question"
+        ]
+      },
+      "FeedbackType": {
+        "type": "string",
+        "enum": [
+          "wrong_currency",
+          "unreadable_serial",
+          "unanswered_question",
+          "other"
+        ],
+        "description": "`wrong_currency`: the app named the wrong currency. `unreadable_serial`: the serial number could not be read. `unanswered_question`: the answer was \"I don't have that information\". `other`: anything else (needs a `message`)."
+      },
+      "FeedbackRequest": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "description": "`wrong_currency`: the app named the wrong currency. `unreadable_serial`: the serial number could not be read. `unanswered_question`: the answer was \"I don't have that information\". `other`: anything else (needs a `message`).",
+            "example": "wrong_currency",
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/FeedbackType"
+              }
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "What happened, in the user's words. Required when `type` is `other`.",
+            "maxLength": 1000,
+            "example": "It said US dollar but this is a Canadian note."
+          },
+          "isoCode": {
+            "type": "string",
+            "description": "The currency the app showed, if any.",
+            "example": "USD",
+            "pattern": "^[A-Za-z]{3}$"
+          },
+          "ocrLines": {
+            "description": "The text OCR read. Helps reproduce the problem. Never send images.",
+            "maxItems": 30,
+            "example": [
+              "BANK OF CANADA",
+              "TWENTY DOLLARS"
+            ],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "appVersion": {
+            "type": "string",
+            "description": "The app version, as `major.minor.patch`.",
+            "example": "0.1.0"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "FeedbackReceipt": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Quote this if you contact support.",
+            "format": "uuid",
+            "example": "5b0f6c1e-7f0e-4a64-9a43-6d6a3f1f8f0b"
+          },
+          "receivedAt": {
+            "type": "string",
+            "description": "When the server received the report, UTC.",
+            "format": "date-time",
+            "example": "2026-11-08T10:15:30.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "receivedAt"
+        ]
+      }
+    }
+  }
+}

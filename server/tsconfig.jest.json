@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Lets Jest compile the few dependencies that ship ES-module syntax
+    // (Node loads them natively; Jest cannot).
+    "allowJs": true,
+    "checkJs": false
+  }
+}
