@@ -19,16 +19,17 @@ The language model never "knows" currencies. It only rephrases facts retrieved f
 
 ## Status
 
-Early development. Nothing user-facing works yet.
+Early development. The app opens on a working camera, but it cannot identify a currency yet.
 
 | Done | Not started |
 |---|---|
-| Stage 0: tooling, repo layout, device log | Stage 1: camera and OCR |
-| Flutter app architecture (feature-first, Riverpod, go_router) | Stages 2-11: database, on-device model, classifier, backend, release |
-| Unit tests for the vote aggregator, serial validator and rank fusion | `server/`, `ml/` and `data/` (placeholders only) |
+| Stage 0: tooling, repo layout, device log | Stage 2: currency database and lookup from the scanned text |
+| Stage 1: live camera and on-device text reading (ML Kit), checked on an Android emulator only | Stages 3-11: on-device model, classifier, data packs, tiers, release |
+| Flutter app architecture, light and dark UI, scan animation | `ml/` and `data/` (placeholders only) |
+| Backend API with Swagger docs and error handling, on the branch `backend/api` (see [server/README.md](https://github.com/Karamkottish/Currency-reader/blob/backend/api/server/README.md)) | Connecting the app to the API |
 | Logo and brand assets | |
 
-The app opens straight on a camera-style scan screen with an animated scan frame (searching, then locked), a demo scan button and a result sheet, in light and dark mode following the phone's setting. The camera and the currency data are not connected yet, so the viewfinder is a stand-in and the result sheet shows clearly labelled sample data. There is also a stub currency list and a chat screen that streams a canned answer from a fake engine.
+The app opens straight on the camera, with an animated scan frame (searching, then locked) and a result sheet, in light and dark mode following the phone's setting. The camera and text reading are real. The shutter button still runs a demo scan that shows clearly labelled sample data, because nothing recognises a currency yet. Reading accuracy on real banknotes has not been tested: the emulator's camera has no text in view. A debug build shows what the text reader saw and how long it took.
 
 ## How it will work
 
