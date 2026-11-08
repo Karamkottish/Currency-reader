@@ -5,7 +5,23 @@ sealed class Failure {
 }
 
 class CameraDenied extends Failure {
-  const CameraDenied() : super('Camera permission is needed to scan notes.');
+  /// [permanent]: the system will not ask again, so the user has to turn the
+  /// camera on in Settings.
+  const CameraDenied({this.permanent = false})
+      : super(
+          permanent
+              ? 'Camera access is turned off. Turn it on in your phone '
+                  'settings, then come back.'
+              : 'Currency Reader needs the camera to read banknotes.',
+        );
+
+  final bool permanent;
+}
+
+class CameraUnavailable extends Failure {
+  const CameraUnavailable()
+      : super('The camera could not start. Close other camera apps and try '
+            'again.');
 }
 
 class LowConfidence extends Failure {

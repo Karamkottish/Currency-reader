@@ -41,6 +41,46 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.2"
+  camera:
+    dependency: "direct main"
+    description:
+      name: camera
+      sha256: "034c38cb8014d29698dcae6d20276688a1bf74e6487dfeb274d70ea05d5f7777"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.12.0+1"
+  camera_android_camerax:
+    dependency: transitive
+    description:
+      name: camera_android_camerax
+      sha256: b5064cf25a2787d122d0bf12e77c7b1033a2b983d0730e3091f770ee376efde5
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.2"
+  camera_avfoundation:
+    dependency: transitive
+    description:
+      name: camera_avfoundation
+      sha256: "90e4cc3fde331581a3b2d35d83be41dbb7393af0ab857eb27b732174289cb96d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.10.1"
+  camera_platform_interface:
+    dependency: transitive
+    description:
+      name: camera_platform_interface
+      sha256: "7ac852d77699acee79f0d438b793feee26721841e50973576419ff5c6d95e9b7"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.13.0"
+  camera_web:
+    dependency: transitive
+    description:
+      name: camera_web
+      sha256: "57f49a635c8bf249d07fb95eb693d7e4dda6796dedb3777f9127fb54847beba7"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.5+3"
   characters:
     dependency: transitive
     description:
@@ -97,6 +137,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.16.0"
+  cross_file:
+    dependency: transitive
+    description:
+      name: cross_file
+      sha256: "28bb3ae56f117b5aec029d702a90f57d285cd975c3c5c281eaca38dbc47c5937"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.5+2"
   crypto:
     dependency: transitive
     description:
@@ -158,6 +206,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.0.0"
+  flutter_plugin_android_lifecycle:
+    dependency: transitive
+    description:
+      name: flutter_plugin_android_lifecycle
+      sha256: "38d1c268de9097ff59cf0e844ac38759fc78f76836d37edad06fa21e182055a0"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.34"
   flutter_riverpod:
     dependency: "direct main"
     description:
@@ -200,6 +256,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "17.2.3"
+  google_mlkit_commons:
+    dependency: transitive
+    description:
+      name: google_mlkit_commons
+      sha256: c7fc384bdb66c3b83e24e3a41818e61d7a378d900f65f5e775344fbca95a0917
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.12.0"
+  google_mlkit_text_recognition:
+    dependency: "direct main"
+    description:
+      name: google_mlkit_text_recognition
+      sha256: "8324fdc2628ebeb63568ad06437b984b716d938d87e4ce63ab24dfd3eeebf08a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.16.0"
   http_multi_server:
     dependency: transitive
     description:
@@ -328,6 +400,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.9.1"
+  plugin_platform_interface:
+    dependency: transitive
+    description:
+      name: plugin_platform_interface
+      sha256: "4820fbfdb9478b1ebae27888254d445073732dae3d6ea81f0b7e06d5dedc3f02"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.1.8"
   pool:
     dependency: transitive
     description:
@@ -437,6 +517,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.4"
+  stream_transform:
+    dependency: transitive
+    description:
+      name: stream_transform
+      sha256: a00e5f18bffc764f923e7dec1038527f7fe7a1791361a7117f0358193f13d53a
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.1.2"
   string_scanner:
     dependency: transitive
     description:

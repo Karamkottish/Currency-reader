@@ -1,22 +1,40 @@
+import 'dart:typed_data';
+
 /// Plugin-independent OCR interface. Stage 1: ML Kit implementation.
 /// Stage 10: custom recognizer.
 abstract class OcrEngine {
-  Future<String> recognize(OcrInput input);
+  /// Returns the recognised text lines, top to bottom.
+  Future<List<String>> recognize(OcrInput input);
+
   Future<void> dispose();
 }
 
-/// Plain bytes + metadata so the domain never sees plugin types.
+enum OcrPixelFormat {
+  /// Android camera frames.
+  nv21,
+
+  /// iOS camera frames.
+  bgra8888,
+}
+
+/// Plain bytes plus metadata, so nothing outside the data layer sees plugin
+/// types.
 class OcrInput {
   const OcrInput({
     required this.bytes,
     required this.width,
     required this.height,
-    required this.rotation,
+    required this.bytesPerRow,
+    required this.rotationDegrees,
     required this.format,
   });
-  final List<int> bytes;
+
+  final Uint8List bytes;
   final int width;
   final int height;
-  final int rotation;
-  final String format; // 'nv21' (Android) or 'bgra8888' (iOS)
+  final int bytesPerRow;
+
+  /// Clockwise rotation (0, 90, 180 or 270) that makes the frame upright.
+  final int rotationDegrees;
+  final OcrPixelFormat format;
 }

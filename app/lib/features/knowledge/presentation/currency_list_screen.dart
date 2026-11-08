@@ -47,7 +47,11 @@ class CurrencyListScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: Space.s6),
                   FilledButton(
-                    onPressed: () => context.go(Routes.scan),
+                    // Go back to the camera that opened this screen, so it can
+                    // restart. Only a direct link has nothing to go back to.
+                    onPressed: () => context.canPop()
+                        ? context.pop()
+                        : context.go(Routes.scan),
                     child: const Text('Scan a note'),
                   ),
                 ],
