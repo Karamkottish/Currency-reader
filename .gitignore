@@ -7,3 +7,7 @@ build/
 *.tflite
 *.litertlm
 *.gguf
+
+# Build output
+dist/
+*.tsbuildinfo
