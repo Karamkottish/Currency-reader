@@ -244,6 +244,42 @@ void main() {
       expect(find.byTooltip('Turn flash on'), findsOneWidget);
     });
 
+    testWidgets('switches between cameras, and the torch resets', (tester) async {
+      await setScreen(tester, phone);
+      final camera = await openApp(tester);
+
+      await tester.tap(find.byTooltip('Turn flash on'));
+      await tester.pump();
+      expect(camera.flashOn, isTrue);
+
+      await tester.tap(find.byTooltip('Switch camera'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(camera.switchCalls, 1);
+      expect(camera.flashOn, isFalse);
+      expect(find.byTooltip('Turn flash on'), findsOneWidget);
+      expect(find.text("Couldn't switch cameras."), findsNothing);
+      expect(find.text('Point at a banknote'), findsOneWidget);
+    });
+
+    testWidgets('says so when the other camera cannot start', (tester) async {
+      await setScreen(tester, phone);
+      final camera = await openApp(tester);
+      camera.switchWorks = false;
+
+      await tester.tap(find.byTooltip('Switch camera'));
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text("Couldn't switch cameras."), findsOneWidget);
+      expect(find.text('Point at a banknote'), findsOneWidget);
+    });
+
+    testWidgets('no switch button on a phone with one camera', (tester) async {
+      await setScreen(tester, phone);
+      final camera = FakeCameraSource()..canSwitch = false;
+      await openApp(tester, camera: camera);
+      expect(find.byTooltip('Switch camera'), findsNothing);
+      expect(find.byTooltip('Turn flash on'), findsOneWidget);
+    });
+
     testWidgets('debug readout shows what OCR read and how long it took',
         (tester) async {
       await setScreen(tester, phone);

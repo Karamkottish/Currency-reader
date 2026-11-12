@@ -14,17 +14,27 @@ import 'frame_gate.dart';
 import 'ocr/ml_kit_ocr_engine.dart';
 import 'ocr/ocr_engine.dart';
 
-/// The phone's back camera at 720p, with every third frame read by OCR.
+/// Build with `--dart-define=SHOW_OCR=true` to see what OCR reads on screen
+/// and in the log, in a release build. Off by default, because the text comes
+/// from whatever the camera is looking at.
+const showOcrText = kDebugMode || bool.fromEnvironment('SHOW_OCR');
+
+/// The phone's camera at 720p, with every third frame read by OCR. Starts on
+/// the back camera and can switch to the front one.
 class DeviceCameraSource implements CameraSource {
   DeviceCameraSource({OcrEngine? ocr}) : _ocr = ocr ?? MlKitOcrEngine();
 
   final OcrEngine _ocr;
   final _gate = FrameGate(every: 3);
   final _readings = StreamController<OcrReading>.broadcast();
+  final _changes = ValueNotifier<int>(0);
 
+  List<CameraDescription> _cameras = const [];
+  int _index = 0;
   CameraController? _controller;
   Future<Result<void>>? _opening;
   bool _streaming = false;
+  bool _switching = false;
   bool _disposed = false;
 
   bool get _isAndroid => defaultTargetPlatform == TargetPlatform.android;
@@ -33,25 +43,25 @@ class DeviceCameraSource implements CameraSource {
   Stream<OcrReading> get readings => _readings.stream;
 
   @override
+  Listenable get changes => _changes;
+
+  @override
+  bool get canSwitchCamera => _cameras.length > 1;
+
+  @override
   Future<Result<void>> open() => _opening ??= _open();
 
   Future<Result<void>> _open() async {
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) return _fail(const CameraUnavailable());
-
-      final description = cameras.firstWhere(
+      _cameras = cameras;
+      final back = cameras.indexWhere(
         (c) => c.lensDirection == CameraLensDirection.back,
-        orElse: () => cameras.first,
       );
-      final controller = CameraController(
-        description,
-        ResolutionPreset.high, // 720p: enough for printed text, cheap to read
-        enableAudio: false,
-        imageFormatGroup:
-            _isAndroid ? ImageFormatGroup.nv21 : ImageFormatGroup.bgra8888,
-      );
-      await controller.initialize();
+      _index = back == -1 ? 0 : back;
+
+      final controller = await _create(_cameras[_index]);
       if (_disposed) {
         await controller.dispose();
         return _fail(const CameraUnavailable());
@@ -66,6 +76,18 @@ class DeviceCameraSource implements CameraSource {
       debugPrint('Camera failed to start: $e');
       return _fail(const CameraUnavailable());
     }
+  }
+
+  Future<CameraController> _create(CameraDescription description) async {
+    final controller = CameraController(
+      description,
+      ResolutionPreset.high, // 720p: enough for printed text, cheap to read
+      enableAudio: false,
+      imageFormatGroup:
+          _isAndroid ? ImageFormatGroup.nv21 : ImageFormatGroup.bgra8888,
+    );
+    await controller.initialize();
+    return controller;
   }
 
   /// Lets the next [open] try again after a failure.
@@ -83,12 +105,54 @@ class DeviceCameraSource implements CameraSource {
       };
 
   @override
+  Future<bool> switchCamera() async {
+    if (!canSwitchCamera || _switching || _disposed || _controller == null) {
+      return false;
+    }
+    _switching = true;
+    final wasStreaming = _streaming;
+    final previousIndex = _index;
+    try {
+      await pause();
+      // Release the camera before opening the next one: many phones cannot
+      // have both open at once.
+      final old = _controller;
+      _controller = null;
+      _changes.value++; // preview shows a dark box while switching
+      await old?.dispose();
+
+      final next = (previousIndex + 1) % _cameras.length;
+      try {
+        _controller = await _create(_cameras[next]);
+        _index = next;
+      } catch (e) {
+        debugPrint('Could not start the other camera: $e');
+        // Go back to the camera that was working.
+        _controller = await _create(_cameras[previousIndex]);
+        _index = previousIndex;
+        return false;
+      } finally {
+        _changes.value++;
+        if (wasStreaming) await resume();
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Switching cameras failed: $e');
+      return false;
+    } finally {
+      _switching = false;
+    }
+  }
+
+  @override
   Future<void> resume() async {
     final controller = _controller;
     if (controller == null || _streaming || _disposed) return;
     _streaming = true;
     try {
-      await controller.startImageStream(_onFrame);
+      // Each frame is tied to the camera that produced it, so a frame still
+      // being read when the camera switches cannot use the new one's rotation.
+      await controller.startImageStream((image) => _onFrame(controller, image));
     } catch (e) {
       _streaming = false;
       debugPrint('Could not start the image stream: $e');
@@ -107,17 +171,21 @@ class DeviceCameraSource implements CameraSource {
     }
   }
 
-  Future<void> _onFrame(CameraImage image) async {
+  Future<void> _onFrame(CameraController controller, CameraImage image) async {
     if (!_gate.tryAcquire()) return;
     try {
-      final input = _toInput(image);
+      final input = _toInput(controller, image);
       if (input == null) return;
       final clock = Stopwatch()..start();
       final lines = await _ocr.recognize(input);
       clock.stop();
-      if (_readings.isClosed) return;
+      // The camera may have been switched while this frame was being read.
+      if (_readings.isClosed || !identical(controller, _controller)) return;
       debugPrint('[perf] ocr: ${clock.elapsedMilliseconds} ms, '
           '${lines.length} lines');
+      if (showOcrText && lines.isNotEmpty) {
+        debugPrint('[ocr] ${lines.take(6).join(' | ')}');
+      }
       _readings.add(OcrReading(lines: lines, elapsed: clock.elapsed));
     } catch (e) {
       debugPrint('OCR failed on a frame: $e');
@@ -126,9 +194,7 @@ class DeviceCameraSource implements CameraSource {
     }
   }
 
-  OcrInput? _toInput(CameraImage image) {
-    final controller = _controller;
-    if (controller == null) return null;
+  OcrInput? _toInput(CameraController controller, CameraImage image) {
     // Both platforms deliver this format as a single plane.
     if (image.planes.length != 1) return null;
 
@@ -189,6 +255,7 @@ class DeviceCameraSource implements CameraSource {
     await pause();
     await _controller?.dispose();
     _controller = null;
+    _changes.dispose();
     await _readings.close();
     await _ocr.dispose();
   }

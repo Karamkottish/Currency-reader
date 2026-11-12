@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme/tokens.dart';
 import '../../../core/errors/failure.dart';
+import '../data/device_camera_source.dart' show showOcrText;
 import 'scan_controller.dart';
 import 'scan_state.dart';
 import 'widgets/result_sheet.dart';
@@ -29,6 +29,7 @@ class ScanScreen extends ConsumerStatefulWidget {
 class _ScanScreenState extends ConsumerState<ScanScreen>
     with WidgetsBindingObserver {
   bool _flashOn = false;
+  bool _switching = false;
 
   ScanController get _scan => ref.read(scanControllerProvider.notifier);
 
@@ -88,6 +89,24 @@ class _ScanScreenState extends ConsumerState<ScanScreen>
     }
   }
 
+  Future<void> _switchCamera() async {
+    if (_switching) return;
+    setState(() => _switching = true);
+    final ok = await ref.read(cameraSourceProvider).switchCamera();
+    if (!mounted) return;
+    setState(() {
+      _switching = false;
+      if (ok) _flashOn = false; // the other camera starts with the torch off
+    });
+    if (!ok) {
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
+          const SnackBar(content: Text("Couldn't switch cameras.")),
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen<ScanState>(scanControllerProvider, _onState);
@@ -126,6 +145,7 @@ class _ScanScreenState extends ConsumerState<ScanScreen>
                       state: state,
                       flashOn: _flashOn,
                       onFlash: failed ? null : _toggleFlash,
+                      onSwitch: failed || _switching ? null : _switchCamera,
                       onRetry: _scan.openCamera,
                     ),
                   ),
@@ -150,12 +170,14 @@ class _Viewfinder extends ConsumerWidget {
     required this.state,
     required this.flashOn,
     required this.onFlash,
+    required this.onSwitch,
     required this.onRetry,
   });
 
   final ScanState state;
   final bool flashOn;
   final VoidCallback? onFlash;
+  final VoidCallback? onSwitch;
   final VoidCallback onRetry;
 
   @override
@@ -185,7 +207,14 @@ class _Viewfinder extends ConsumerWidget {
         );
         return Stack(
           children: [
-            Positioned.fill(child: camera.buildPreview(frame)),
+            // Rebuilds after switching cameras, when the picture changes but
+            // the scan state does not.
+            Positioned.fill(
+              child: ListenableBuilder(
+                listenable: camera.changes,
+                builder: (_, __) => camera.buildPreview(frame),
+              ),
+            ),
             Positioned.fill(child: CustomPaint(painter: ScrimPainter(frame))),
             if (failure == null) ...[
               Positioned.fromRect(rect: frame, child: ScanFrame(mood: mood)),
@@ -203,9 +232,14 @@ class _Viewfinder extends ConsumerWidget {
               top: 0,
               left: 0,
               right: 0,
-              child: _TopBar(flashOn: flashOn, onFlash: onFlash),
+              child: _TopBar(
+                flashOn: flashOn,
+                onFlash: onFlash,
+                onSwitch: camera.canSwitchCamera ? onSwitch : null,
+                showSwitch: camera.canSwitchCamera,
+              ),
             ),
-            if (kDebugMode && failure == null)
+            if (showOcrText && failure == null)
               const Positioned(
                 left: Space.s4,
                 right: Space.s4,
@@ -220,10 +254,17 @@ class _Viewfinder extends ConsumerWidget {
 }
 
 class _TopBar extends StatelessWidget {
-  const _TopBar({required this.flashOn, required this.onFlash});
+  const _TopBar({
+    required this.flashOn,
+    required this.onFlash,
+    required this.onSwitch,
+    required this.showSwitch,
+  });
 
   final bool flashOn;
   final VoidCallback? onFlash;
+  final VoidCallback? onSwitch;
+  final bool showSwitch;
 
   @override
   Widget build(BuildContext context) {
@@ -243,6 +284,22 @@ class _TopBar extends StatelessWidget {
               semanticLabel: 'Currency Reader',
             ),
             const Spacer(),
+            if (showSwitch) ...[
+              IconButton(
+                onPressed: onSwitch,
+                tooltip: 'Switch camera',
+                iconSize: IconSize.md,
+                icon: const Icon(Icons.flip_camera_android_outlined),
+                style: IconButton.styleFrom(
+                  fixedSize: const Size.square(Space.s12),
+                  backgroundColor: CameraChrome.control,
+                  foregroundColor: CameraChrome.foreground,
+                  disabledBackgroundColor: CameraChrome.control,
+                  disabledForegroundColor: Neutral.n500,
+                ),
+              ),
+              const SizedBox(width: Space.s2),
+            ],
             IconButton(
               onPressed: onFlash,
               isSelected: flashOn,

@@ -19,8 +19,16 @@ class FakeCameraSource implements CameraSource {
   int openCalls = 0;
   int pauseCalls = 0;
   int resumeCalls = 0;
+  int switchCalls = 0;
   bool flashOn = false;
   bool hasFlash = true;
+
+  /// Set false to pretend the phone has a single camera, or that switching
+  /// fails.
+  bool canSwitch = true;
+  bool switchWorks = true;
+
+  final _changes = ValueNotifier<int>(0);
 
   final _readings = StreamController<OcrReading>.broadcast();
 
@@ -53,8 +61,26 @@ class FakeCameraSource implements CameraSource {
   }
 
   @override
+  bool get canSwitchCamera => canSwitch;
+
+  @override
+  Future<bool> switchCamera() async {
+    switchCalls++;
+    if (!canSwitch || !switchWorks) return false;
+    flashOn = false; // a new camera starts with the torch off
+    _changes.value++;
+    return true;
+  }
+
+  @override
+  Listenable get changes => _changes;
+
+  @override
   Widget buildPreview(Rect guide) => ViewfinderStandIn(frame: guide);
 
   @override
-  Future<void> dispose() => _readings.close();
+  Future<void> dispose() async {
+    _changes.dispose();
+    await _readings.close();
+  }
 }

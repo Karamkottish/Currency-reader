@@ -25,6 +25,19 @@ abstract class CameraSource {
   /// Turns the torch on or off. False if this camera has no torch.
   Future<bool> setFlash(bool on);
 
+  /// True when the phone has more than one camera to switch between. Only
+  /// meaningful after [open].
+  bool get canSwitchCamera;
+
+  /// Switches between the back and front camera. Returns false if there is
+  /// nothing to switch to or the other camera could not start; the camera
+  /// that was in use keeps working in that case.
+  Future<bool> switchCamera();
+
+  /// Fires when the picture changes without the scan state changing, which
+  /// happens after [switchCamera]. The preview rebuilds when it does.
+  Listenable get changes;
+
   /// The live picture. [guide] is where the note frame sits, used by the
   /// stand-in picture; the real camera ignores it.
   Widget buildPreview(Rect guide);
