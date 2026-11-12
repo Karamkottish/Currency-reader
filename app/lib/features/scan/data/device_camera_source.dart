@@ -181,16 +181,32 @@ class DeviceCameraSource implements CameraSource {
       clock.stop();
       // The camera may have been switched while this frame was being read.
       if (_readings.isClosed || !identical(controller, _controller)) return;
-      debugPrint('[perf] ocr: ${clock.elapsedMilliseconds} ms, '
-          '${lines.length} lines');
-      if (showOcrText && lines.isNotEmpty) {
-        debugPrint('[ocr] ${lines.take(6).join(' | ')}');
-      }
+      _logReading(lines, clock.elapsed);
       _readings.add(OcrReading(lines: lines, elapsed: clock.elapsed));
     } catch (e) {
       debugPrint('OCR failed on a frame: $e');
     } finally {
       _gate.release();
+    }
+  }
+
+  DateTime _lastTimingLog = DateTime.fromMillisecondsSinceEpoch(0);
+  String _lastTextLogged = '';
+
+  /// Quiet by design: OCR runs several times a second, and a line per frame
+  /// buries everything else in the console. Text is logged only when it
+  /// changes, and the timing at most every 5 seconds.
+  void _logReading(List<String> lines, Duration elapsed) {
+    if (!showOcrText) return;
+    final text = lines.take(6).join(' | ');
+    if (text.isNotEmpty && text != _lastTextLogged) {
+      _lastTextLogged = text;
+      debugPrint('[ocr] $text');
+    }
+    final now = DateTime.now();
+    if (now.difference(_lastTimingLog) >= const Duration(seconds: 5)) {
+      _lastTimingLog = now;
+      debugPrint('[perf] ocr: ${elapsed.inMilliseconds} ms');
     }
   }
 
